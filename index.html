@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Studio Viral — Agente de Criação Autônoma</title>
+<style>
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #242424;
+    --border: #2e2e2e;
+    --text: #f0f0f0;
+    --muted: #888;
+    --accent: #7c5cff;
+    --accent2: #00d4aa;
+    --danger: #ff4d4d;
+    --warn: #ffaa00;
+    --green: #22c55e;
+    --radius: 10px;
+    --font: 'Inter', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; }
+
+  /* SIDEBAR */
+  .layout { display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; background: var(--surface); border-right: 1px solid var(--border); padding: 1.5rem 1rem; flex-shrink: 0; display: flex; flex-direction: column; gap: 4px; }
+  .logo { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 8px; }
+  .logo span { color: var(--accent); }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; color: var(--muted); transition: all .15s; border: none; background: none; width: 100%; text-align: left; }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: var(--accent); color: #fff; }
+  .nav-item .icon { font-size: 16px; width: 18px; text-align: center; }
+  .sidebar-footer { margin-top: auto; font-size: 11px; color: var(--muted); line-height: 1.5; }
+
+  /* MAIN */
+  .main { flex: 1; padding: 2rem; max-width: 860px; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .panel-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+  .panel-sub { font-size: 14px; color: var(--muted); margin-bottom: 1.5rem; line-height: 1.6; }
+
+  /* API KEY BANNER */
+  .api-banner { background: var(--surface2); border: 1px solid var(--warn); border-radius: var(--radius); padding: 1rem 1.25rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 12px; }
+  .api-banner input { flex: 1; background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 8px; font-size: 13px; font-family: monospace; }
+  .api-banner button { background: var(--accent); color: #fff; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .api-banner .api-ok { color: var(--green); font-size: 13px; font-weight: 600; }
+
+  /* FORM ELEMENTS */
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .row.trio { grid-template-columns: 1fr 1fr 1fr; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  select, input[type="text"], textarea { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 9px 12px; border-radius: 8px; font-size: 13px; font-family: var(--font); outline: none; transition: border .15s; }
+  select:focus, input:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: vertical; line-height: 1.6; min-height: 70px; }
+
+  /* BUTTONS */
+  .btn { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: all .15s; }
+  .btn-primary { background: var(--accent); color: #fff; width: 100%; margin-bottom: 1rem; }
+  .btn-primary:hover { opacity: .88; }
+  .btn-primary:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); margin-bottom: 8px; width: 100%; }
+  .btn-outline:hover { background: var(--surface2); }
+
+  /* CARDS */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 12px; }
+  .card-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .card p { font-size: 13px; color: var(--muted); line-height: 1.7; }
+
+  /* METRICS */
+  .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1.25rem; }
+  .metric { background: var(--surface2); border-radius: 8px; padding: 1rem; text-align: center; }
+  .metric .val { font-size: 24px; font-weight: 700; color: var(--accent); }
+  .metric .lbl { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+  /* RESULT */
+  .result-area { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; white-space: pre-wrap; font-size: 13px; line-height: 1.8; color: var(--text); min-height: 60px; margin-top: 4px; }
+  .loading { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; padding: .5rem 0; }
+  .spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* AUTO GRID */
+  .auto-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1.25rem; }
+  .auto-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.1rem; }
+  .auto-card h4 { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .auto-card p { font-size: 12px; color: var(--muted); line-height: 1.6; }
+  .prog { height: 3px; background: var(--border); border-radius: 2px; margin: 8px 0 4px; }
+  .prog-fill { height: 100%; border-radius: 2px; background: var(--accent2); }
+  .prog-label { font-size: 11px; color: var(--muted); }
+
+  /* BADGE */
+  .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 600; }
+  .badge-purple { background: #3c2a8a; color: #b8a6ff; }
+  .badge-green { background: #142d1e; color: #4ade80; }
+  .badge-orange { background: #2d1a00; color: #fb923c; }
+
+  /* DIVIDER */
+  hr { border: none; border-top: 1px solid var(--border); margin: 1.25rem 0; }
+
+  /* STEP INDICATOR */
+  .steps { display: flex; gap: 0; align-items: center; margin-bottom: 1.5rem; }
+  .step { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .step.active { color: var(--accent); font-weight: 600; }
+  .step-dot { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid currentColor; display: flex; align-items: center; justify-content: center; font-size: 10px; flex-shrink: 0; }
+  .step-line { width: 28px; height: 1px; background: var(--border); margin: 0 4px; }
+
+  /* COPY BTN */
+  .copy-btn { float: right; background: var(--surface); border: 1px solid var(--border); color: var(--muted); padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; }
+  .copy-btn:hover { color: var(--text); }
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="logo">🎬 <span>Studio</span>Viral</div>
+
+    <button class="nav-item active" onclick="showPanel('nicho', this)">
+      <span class="icon">🎯</span> Descobrir Nicho
+    </button>
+    <button class="nav-item" onclick="showPanel('tendencias', this)">
+      <span class="icon">📈</span> Tendências
+    </button>
+    <button class="nav-item" onclick="showPanel('roteiro', this)">
+      <span class="icon">📝</span> Roteiro
+    </button>
+    <button class="nav-item" onclick="showPanel('edicao', this)">
+      <span class="icon">✂️</span> Edição
+    </button>
+    <button class="nav-item" onclick="showPanel('monetizacao', this)">
+      <span class="icon">💰</span> Monetização
+    </button>
+    <button class="nav-item" onclick="showPanel('autonomo', this)">
+      <span class="icon">🤖</span> Modo Autônomo
+    </button>
+
+    <div class="sidebar-footer">
+      Studio Viral v1.0<br>
+      Powered by Claude AI
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main">
+
+    <!-- API KEY BANNER -->
+    <div class="api-banner" id="api-banner">
+      <div style="font-size:18px">🔑</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">Cole sua chave da API Anthropic</div>
+        <input type="password" id="api-key-input" placeholder="sk-ant-api03-..." />
+      </div>
+      <button onclick="salvarChave()">Salvar</button>
+    </div>
+
+    <!-- NICHO -->
+    <div class="panel active" id="panel-nicho">
+      <div class="panel-title">🎯 Descobrir seu nicho ideal</div>
+      <div class="panel-sub">Responda as perguntas abaixo. A IA pesquisa o mercado atual e recomenda os nichos com maior potencial para o seu perfil.</div>
+
+      <div class="row">
+        <div class="field">
+          <label>Tempo disponível por dia</label>
+          <select id="n-tempo">
+            <option>30 minutos</option><option>1 hora</option>
+            <option>2-3 horas</option><option>Tempo integral</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Quer aparecer nos vídeos?</label>
+          <select id="n-aparecer">
+            <option>Não (faceless / sem aparecer)</option>
+            <option>Sim, às vezes</option><option>Sim, sempre</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Orçamento inicial</label>
+          <select id="n-budget">
+            <option>Zero — só celular</option><option>Até R$ 300</option>
+            <option>Até R$ 1.000</option><option>Acima de R$ 1.000</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Objetivo principal</label>
+          <select id="n-objetivo">
+            <option>Renda passiva</option><option>Marca pessoal</option>
+            <option>Vender produto ou serviço</option><option>Só views e fama</option>
+          </select>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:1rem">
+        <label>O que você gosta ou sabe fazer?</label>
+        <textarea id="n-interesses" placeholder="Ex: cozinhar, games, finanças, humor, tecnologia, animais, esportes, motivação..."></textarea>
+      </div>
+
+      <button class="btn btn-primary" id="btn-nicho" onclick="analisarNicho()">
+        ✨ Analisar meu perfil e recomendar nichos
+      </button>
+      <div id="res-nicho"></div>
+    </div>
+
+    <!-- TENDÊNCIAS -->
+    <div class="panel" id="panel-tendencias">
+      <div class="panel-title">📈 Radar de Tendências em Tempo Real</div>
+      <div class="panel-sub">O agente busca na web o que está viral agora e calcula o potencial de monetização de cada formato.</div>
+
+      <div class="row">
+        <div class="field">
+          <label>Nicho</label>
+          <select id="t-nicho">
+            <option>Finanças e dinheiro</option><option>Entretenimento e humor</option>
+            <option>Tecnologia e IA</option><option>Saúde e bem-estar</option>
+            <option>Educação e curiosidades</option><option>Games</option>
+            <option>Lifestyle e vlogs</option><option>Culinária</option>
+            <option>Motivação e desenvolvimento pessoal</option><option>Animais e pets</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Plataforma foco</label>
+          <select id="t-plat">
+            <option>YouTube Shorts</option><option>TikTok</option>
+            <option>Instagram Reels</option><option>YouTube (vídeos longos)</option>
+            <option>Todas as plataformas</option>
+          </select>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="btn-tend" onclick="buscarTendencias()">
+        🔍 Escanear tendências agora
+      </button>
+      <div id="res-tend"></div>
+    </div>
+
+    <!-- ROTEIRO -->
+    <div class="panel" id="panel-roteiro">
+      <div class="panel-title">📝 Gerador de Roteiros Virais</div>
+      <div class="panel-sub">Descreva o tema. A IA cria um roteiro completo com gancho, desenvolvimento e CTA otimizado para o algoritmo.</div>
+
+      <div class="row">
+        <div class="field">
+          <label>Plataforma</label>
+          <select id="r-plat">
+            <option>YouTube Shorts (até 60s)</option><option>TikTok (30-90s)</option>
+            <option>Instagram Reels (até 90s)</option><option>YouTube longo (8-15 min)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Tom do vídeo</label>
+          <select id="r-tom">
+            <option>Informativo e direto</option><option>Engraçado e descontraído</option>
+            <option>Chocante / clickbait</option><option>Motivacional</option>
+            <option>Storytelling / narrativa</option>
+          </select>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:1rem">
+        <label>Tema ou ideia do vídeo</label>
+        <textarea id="r-tema" placeholder="Ex: '5 formas de ganhar dinheiro com IA em 2025' ou cole uma tendência do radar..."></textarea>
+      </div>
+
+      <button class="btn btn-primary" id="btn-rot" onclick="gerarRoteiro()">
+        ✍️ Gerar roteiro completo
+      </button>
+      <div id="res-rot"></div>
+    </div>
+
+    <!-- EDIÇÃO -->
+    <div class="panel" id="panel-edicao">
+      <div class="panel-title">✂️ Workflow de Edição Personalizado</div>
+      <div class="panel-sub">Informe seu nível e equipamento. O agente monta o processo de edição ideal com ferramentas para cada etapa.</div>
+
+      <div class="row">
+        <div class="field">
+          <label>Nível de edição atual</label>
+          <select id="e-nivel">
+            <option>Zero — nunca editei nada</option><option>Iniciante — básico</option>
+            <option>Intermediário</option><option>Avançado</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Dispositivo principal</label>
+          <select id="e-device">
+            <option>Celular Android</option><option>Celular iPhone</option>
+            <option>PC Windows</option><option>Mac</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Formato dos vídeos</label>
+          <select id="e-formato">
+            <option>Curtos verticais (Shorts/Reels/TikTok)</option>
+            <option>YouTube longo (horizontal)</option><option>Ambos</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Orçamento para ferramentas</label>
+          <select id="e-budget">
+            <option>Zero — só gratuitas</option><option>Até R$ 50/mês</option>
+            <option>Até R$ 150/mês</option><option>Livre</option>
+          </select>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="btn-ed" onclick="gerarWorkflowEdicao()">
+        🛠️ Montar meu workflow de edição
+      </button>
+      <div id="res-ed"></div>
+    </div>
+
+    <!-- MONETIZAÇÃO -->
+    <div class="panel" id="panel-monetizacao">
+      <div class="panel-title">💰 Estratégia de Monetização</div>
+      <div class="panel-sub">O agente mapeia todas as fontes de receita disponíveis para o seu estágio atual e projeta ganhos reais.</div>
+
+      <div class="row">
+        <div class="field">
+          <label>Plataforma principal</label>
+          <select id="m-plat">
+            <option>YouTube</option><option>TikTok</option>
+            <option>Instagram</option><option>Múltiplas plataformas</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Seguidores / inscritos atuais</label>
+          <select id="m-seg">
+            <option>Ainda não comecei</option><option>1 a 500</option>
+            <option>500 a 5.000</option><option>5.000 a 50.000</option>
+            <option>Acima de 50.000</option>
+          </select>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:1rem">
+        <label>Nicho do canal</label>
+        <input type="text" id="m-nicho" placeholder="Ex: finanças pessoais, humor, tecnologia, culinária...">
+      </div>
+
+      <button class="btn btn-primary" id="btn-mon" onclick="gerarMonetizacao()">
+        💸 Mapear minhas fontes de receita
+      </button>
+      <div id="res-mon"></div>
+    </div>
+
+    <!-- AUTÔNOMO -->
+    <div class="panel" id="panel-autonomo">
+      <div class="panel-title">🤖 Modo Autônomo</div>
+      <div class="panel-sub">O mapa completo do sistema que trabalha por você 7 dias por semana. Cada módulo pode ser implementado separadamente.</div>
+
+      <div class="metrics">
+        <div class="metric"><div class="val">~2h</div><div class="lbl">Trabalho manual/semana</div></div>
+        <div class="metric"><div class="val">7/7</div><div class="lbl">Dias publicando sozinho</div></div>
+        <div class="metric"><div class="val">R$0</div><div class="lbl">Custo da versão gratuita</div></div>
+      </div>
+
+      <div class="auto-grid">
+        <div class="auto-card">
+          <h4>🔍 Monitoramento automático</h4>
+          <p>Google Trends API + YouTube Data API + Apify (TikTok) rodam diariamente e mandam alertas das tendências emergentes.</p>
+          <div class="prog"><div class="prog-fill" style="width:85%"></div></div>
+          <div class="prog-label">Automação: alta</div>
+        </div>
+        <div class="auto-card">
+          <h4>✍️ Roteiros automáticos</h4>
+          <p>Claude API gera roteiro para cada tendência detectada. Você revisa em minutos e aprova com 1 clique.</p>
+          <div class="prog"><div class="prog-fill" style="width:95%"></div></div>
+          <div class="prog-label">Automação: muito alta</div>
+        </div>
+        <div class="auto-card">
+          <h4>🎙️ Narração com IA</h4>
+          <p>ElevenLabs ou Play.ht converte o roteiro em voz natural em português. Zero gravação manual.</p>
+          <div class="prog"><div class="prog-fill" style="width:90%"></div></div>
+          <div class="prog-label">Automação: muito alta</div>
+        </div>
+        <div class="auto-card">
+          <h4>🎬 Edição automática</h4>
+          <p>Pictory AI, InVideo AI ou RunwayML montam o vídeo com imagens, legendas e trilha automaticamente.</p>
+          <div class="prog"><div class="prog-fill" style="width:75%"></div></div>
+          <div class="prog-label">Automação: alta</div>
+        </div>
+        <div class="auto-card">
+          <h4>📤 Publicação agendada</h4>
+          <p>Buffer, Later ou n8n publicam nos horários de pico de cada plataforma sem nenhuma ação manual.</p>
+          <div class="prog"><div class="prog-fill" style="width:99%"></div></div>
+          <div class="prog-label">Automação: total</div>
+        </div>
+        <div class="auto-card">
+          <h4>📊 Análise e ajuste</h4>
+          <p>n8n + Claude API analisam métricas semanalmente e ajustam o estilo dos próximos vídeos automaticamente.</p>
+          <div class="prog"><div class="prog-fill" style="width:70%"></div></div>
+          <div class="prog-label">Automação: média-alta</div>
+        </div>
+      </div>
+
+      <hr>
+
+      <div class="card">
+        <div class="card-title">🛠️ Ferramentas gratuitas para começar agora</div>
+        <p style="line-height:2">
+          <strong>Tendências:</strong> Google Trends, TubeBuddy (free), VidIQ (free)<br>
+          <strong>Roteiro:</strong> Claude.ai (este app) ou ChatGPT<br>
+          <strong>Narração:</strong> ElevenLabs (10k chars/mês grátis), Murf AI (free tier)<br>
+          <strong>Vídeo:</strong> CapCut (celular/PC), DaVinci Resolve (PC, gratuito)<br>
+          <strong>Imagens:</strong> Pexels, Pixabay, Canva (free)<br>
+          <strong>Automação:</strong> n8n.io (self-hosted gratuito), Make.com (free tier)<br>
+          <strong>Agendamento:</strong> Buffer (3 canais grátis), Meta Business Suite (grátis)
+        </p>
+      </div>
+
+      <button class="btn btn-primary" id="btn-auto" onclick="gerarPlanoAutonomo()">
+        🗺️ Gerar meu plano de implementação semana a semana
+      </button>
+      <div id="res-auto"></div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+let apiKey = localStorage.getItem('sv_api_key') || '';
+
+function init() {
+  if (apiKey) {
+    document.getElementById('api-key-input').value = apiKey;
+    document.getElementById('api-banner').style.borderColor = '#22c55e';
+    document.getElementById('api-banner').querySelector('button').textContent = '✓ Salvo';
+  }
+}
+
+function salvarChave() {
+  apiKey = document.getElementById('api-key-input').value.trim();
+  localStorage.setItem('sv_api_key', apiKey);
+  const banner = document.getElementById('api-banner');
+  banner.style.borderColor = '#22c55e';
+  banner.querySelector('button').textContent = '✓ Salvo';
+}
+
+function showPanel(id, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+
+function loading(elId) {
+  document.getElementById(elId).innerHTML = `
+    <div class="loading">
+      <div class="spinner"></div>
+      Buscando na web e processando com IA... pode levar 15-30 segundos
+    </div>`;
+}
+
+function showResult(elId, text) {
+  document.getElementById(elId).innerHTML = `
+    <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('${elId}-text').innerText)">📋 Copiar</button>
+    <div class="result-area" id="${elId}-text">${text.trim()}</div>`;
+}
+
+async function callClaude(prompt, elId, btnId) {
+  if (!apiKey) {
+    alert('Cole sua chave de API Anthropic no campo no topo da página!');
+    return;
+  }
+  loading(elId);
+  document.getElementById(btnId).disabled = true;
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1500,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.error) {
+      document.getElementById(elId).innerHTML = `<div style="color:#ff4d4d;font-size:13px;padding:.5rem 0">Erro da API: ${data.error.message}</div>`;
+      return;
+    }
+
+    let txt = '';
+    for (const b of data.content) {
+      if (b.type === 'text') txt += b.text;
+    }
+    showResult(elId, txt);
+  } catch (e) {
+    document.getElementById(elId).innerHTML = `<div style="color:#ff4d4d;font-size:13px;padding:.5rem 0">Erro: ${e.message}</div>`;
+  }
+
+  document.getElementById(btnId).disabled = false;
+}
+
+function analisarNicho() {
+  const tempo = document.getElementById('n-tempo').value;
+  const aparecer = document.getElementById('n-aparecer').value;
+  const budget = document.getElementById('n-budget').value;
+  const objetivo = document.getElementById('n-objetivo').value;
+  const interesses = document.getElementById('n-interesses').value || 'não especificado';
+
+  callClaude(`Você é especialista em criação de conteúdo digital e monetização de vídeos no Brasil. Pesquise na web os nichos que estão em alta AGORA em 2025-2026 e analise o perfil abaixo para recomendar os 3 melhores nichos.
+
+PERFIL DO CRIADOR:
+- Tempo disponível: ${tempo}
+- Quer aparecer nos vídeos: ${aparecer}
+- Orçamento inicial: ${budget}
+- Objetivo: ${objetivo}
+- Interesses e habilidades: ${interesses}
+
+Para cada um dos 3 nichos recomendados, detalhe:
+1. Por que é ideal para ESTE perfil específico
+2. Potencial de monetização real (valores estimados em R$/mês)
+3. Dificuldade de entrada de 1 a 10
+4. Tipos de vídeos a criar (formatos, exemplos de títulos)
+5. Tempo realista para ver os primeiros resultados
+6. Canais de referência para estudar
+
+Seja honesto sobre expectativas e tempo. Responda em português do Brasil.`,
+    'res-nicho', 'btn-nicho');
+}
+
+function buscarTendencias() {
+  const nicho = document.getElementById('t-nicho').value;
+  const plat = document.getElementById('t-plat').value;
+
+  callClaude(`Pesquise na web as tendências VIRAIS de vídeos de ${nicho} no ${plat} agora em 2025-2026, especialmente no Brasil.
+
+Liste as 5 tendências mais quentes do momento com:
+- Nome e descrição da tendência
+- Por que está viral (algoritmo, audiência, timing)
+- Formato ideal: duração, ritmo, estilo de edição
+- Hashtags mais usadas agora
+- Exemplo de título que gera cliques
+- Potencial de monetização (1 a 5 estrelas)
+- Dificuldade de replicar: fácil / médio / difícil
+
+Ao final, indique qual das 5 você recomenda como PRIMEIRA a explorar e por quê.
+Responda em português do Brasil, de forma prática e direta.`,
+    'res-tend', 'btn-tend');
+}
+
+function gerarRoteiro() {
+  const plat = document.getElementById('r-plat').value;
+  const tom = document.getElementById('r-tom').value;
+  const tema = document.getElementById('r-tema').value || 'tema viral em alta no momento';
+
+  callClaude(`Crie um roteiro viral completo e pronto para gravar sobre: "${tema}"
+
+Plataforma: ${plat}
+Tom: ${tom}
+
+Estruture assim:
+
+🎣 GANCHO (primeiros 3 segundos)
+[frase que prende imediatamente, provoca curiosidade]
+
+🎯 PROMESSA
+[o que o espectador vai ganhar assistindo até o fim]
+
+📖 DESENVOLVIMENTO
+[conteúdo principal em blocos curtos, linguagem natural de vídeo]
+
+⚡ VIRADA / SURPRESA
+[algo inesperado que mantém o espectador até o fim]
+
+📢 CTA (chamada para ação)
+[ação específica: curtir, comentar, seguir, link na bio...]
+
+🎬 DICAS DE EDIÇÃO
+[cortes, textos na tela, trilha sonora, transições]
+
+📌 TÍTULO otimizado para cliques
+📌 DESCRIÇÃO para SEO (3-4 linhas)
+📌 HASHTAGS recomendadas
+
+Responda em português do Brasil. Seja criativo e específico.`,
+    'res-rot', 'btn-rot');
+}
+
+function gerarWorkflowEdicao() {
+  const nivel = document.getElementById('e-nivel').value;
+  const device = document.getElementById('e-device').value;
+  const formato = document.getElementById('e-formato').value;
+  const budget = document.getElementById('e-budget').value;
+
+  callClaude(`Monte um workflow de edição de vídeo personalizado para este perfil:
+- Nível: ${nivel}
+- Dispositivo: ${device}
+- Formato: ${formato}
+- Orçamento: ${budget}
+
+Inclua:
+1. Ferramentas específicas a usar (nome exato e onde baixar/acessar)
+2. Passo a passo completo do processo de edição
+3. Atalhos e truques para editar mais rápido
+4. Técnicas que aumentam retenção e views (cortes, ritmo, legendas)
+5. Recursos gratuitos: templates, músicas, imagens, efeitos
+6. Como usar IA para acelerar cada etapa
+7. Para canal faceless: como gerar vídeos/imagens automaticamente
+
+Seja muito prático. Liste nomes de apps, sites e ferramentas específicas.
+Responda em português do Brasil.`,
+    'res-ed', 'btn-ed');
+}
+
+function gerarMonetizacao() {
+  const plat = document.getElementById('m-plat').value;
+  const seg = document.getElementById('m-seg').value;
+  const nicho = document.getElementById('m-nicho').value || 'geral';
+
+  callClaude(`Crie uma estratégia COMPLETA de monetização para este criador:
+- Plataforma: ${plat}
+- Seguidores/inscritos: ${seg}
+- Nicho: ${nicho}
+
+Pesquise dados atuais de 2025/2026 e mapeie TODAS as fontes de receita disponíveis AGORA com:
+
+1. Quais fontes estão disponíveis com o tamanho atual
+2. Estimativa de ganhos reais em R$/mês por fonte
+3. O que precisa fazer para desbloquear cada fonte
+4. Qual fonte priorizar primeiro (e por quê)
+5. Cronograma de 90 dias para a primeira renda
+
+Fontes a analisar: Adsense/monetização nativa, afiliados (Hotmart, Amazon, etc.), patrocínios, produtos digitais, memberships, live commerce, consultoria.
+
+Seja honesto sobre expectativas e tempo. Use dados reais do mercado brasileiro.
+Responda em português do Brasil.`,
+    'res-mon', 'btn-mon');
+}
+
+function gerarPlanoAutonomo() {
+  callClaude(`Crie um plano de implementação DETALHADO semana a semana para montar um sistema autônomo de criação de vídeos virais do zero no Brasil.
+
+O plano deve cobrir 8 semanas com tarefas específicas para cada semana:
+
+Semana 1-2: Fundação (escolha de nicho, setup básico)
+Semana 3-4: Primeiros vídeos e aprendizado
+Semana 5-6: Automação básica (roteiro + publicação)
+Semana 7-8: Automação avançada (narração IA + edição automática)
+
+Para cada semana, especifique:
+- Tarefas exatas a realizar
+- Ferramentas a configurar (gratuitas primeiro)
+- Meta de resultado (vídeos publicados, seguidores, etc.)
+- Tempo estimado de trabalho
+
+Foco em começar sem gastar nada, usando:
+- Claude/ChatGPT para roteiros
+- ElevenLabs (free tier) para narração
+- CapCut para edição
+- Buffer (free) para agendamento
+- n8n (self-hosted) para automação
+
+Ao final, mostre como escalar para versão paga quando tiver renda.
+Responda em português do Brasil com muita praticidade.`,
+    'res-auto', 'btn-auto');
+}
+
+init();
+</script>
+</body>
+</html>
