@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Studio Viral — Powered by Ollama (Local)</title>
+<style>
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #242424;
+    --border: #2e2e2e;
+    --text: #f0f0f0;
+    --muted: #888;
+    --accent: #a855f7;
+    --accent2: #22c55e;
+    --danger: #ff4d4d;
+    --warn: #ffaa00;
+    --green: #22c55e;
+    --radius: 10px;
+    --font: 'Inter', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; }
+
+  .layout { display: flex; min-height: 100vh; }
+
+  /* SIDEBAR */
+  .sidebar { width: 230px; background: var(--surface); border-right: 1px solid var(--border); padding: 1.5rem 1rem; flex-shrink: 0; display: flex; flex-direction: column; gap: 4px; }
+  .logo { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 8px; }
+  .logo span { color: var(--accent); }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; color: var(--muted); transition: all .15s; border: none; background: none; width: 100%; text-align: left; }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: var(--accent); color: #fff; }
+  .nav-item .icon { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
+  .sidebar-footer { margin-top: auto; font-size: 11px; color: var(--muted); line-height: 1.6; padding-top: 1rem; border-top: 1px solid var(--border); }
+
+  /* MAIN */
+  .main { flex: 1; padding: 2rem; max-width: 880px; overflow-y: auto; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .panel-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+  .panel-sub { font-size: 14px; color: var(--muted); margin-bottom: 1.5rem; line-height: 1.6; }
+
+  /* STATUS BAR */
+  .status-bar { display: flex; align-items: center; gap: 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: .8rem 1.1rem; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 10px; }
+  .status-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+  .status-dot.online { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .status-dot.offline { background: var(--danger); }
+  .status-text { font-size: 13px; color: var(--text); flex: 1; }
+  .status-text small { color: var(--muted); font-size: 12px; }
+  .btn-check { background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+  .btn-check:hover { background: var(--surface2); }
+
+  /* MODEL BAR */
+  .model-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 1.25rem; flex-wrap: wrap; }
+  .model-bar label { font-size: 12px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+  .model-bar select { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 7px 12px; border-radius: 8px; font-size: 13px; flex: 1; }
+  .model-bar input { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 7px 12px; border-radius: 8px; font-size: 13px; flex: 1; font-family: monospace; }
+
+  /* SETUP PANEL */
+  .setup-steps { display: flex; flex-direction: column; gap: 12px; margin-bottom: 1.5rem; }
+  .setup-step { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.1rem 1.25rem; }
+  .setup-step-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .step-num { width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .step-title { font-size: 14px; font-weight: 600; }
+  .setup-step p { font-size: 13px; color: var(--muted); line-height: 1.7; }
+  .code-block { background: #0a0a0a; border: 1px solid var(--border); border-radius: 8px; padding: .75rem 1rem; font-family: monospace; font-size: 13px; color: #a5d6a7; margin: 8px 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .code-block .copy-code { background: var(--surface); border: 1px solid var(--border); color: var(--muted); padding: 3px 8px; border-radius: 5px; font-size: 11px; cursor: pointer; flex-shrink: 0; font-family: var(--font); }
+  .code-block .copy-code:hover { color: var(--text); }
+  .model-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chip { font-size: 12px; padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border); color: var(--muted); cursor: pointer; transition: all .15s; }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+  .chip.rec { border-color: var(--accent); color: var(--accent); background: #1a0a2e; }
+  .chip .chip-size { font-size: 10px; opacity: .7; }
+
+  /* FORM */
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  select, input[type="text"], textarea { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 9px 12px; border-radius: 8px; font-size: 13px; font-family: var(--font); outline: none; transition: border .15s; width: 100%; }
+  select:focus, input[type="text"]:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: vertical; line-height: 1.6; min-height: 72px; }
+
+  /* BUTTONS */
+  .btn { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: all .15s; width: 100%; margin-bottom: 1rem; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { opacity: .88; }
+  .btn-primary:disabled { opacity: .35; cursor: not-allowed; }
+
+  /* RESULT */
+  .result-wrap { position: relative; margin-top: 4px; }
+  .copy-btn { position: absolute; top: 10px; right: 10px; background: var(--surface); border: 1px solid var(--border); color: var(--muted); padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; z-index: 1; }
+  .copy-btn:hover { color: var(--text); }
+  .result-area { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; white-space: pre-wrap; font-size: 13px; line-height: 1.9; color: var(--text); min-height: 60px; }
+  .loading { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; padding: .75rem 0; }
+  .spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; flex-shrink: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error-msg { color: var(--danger); font-size: 13px; padding: .9rem; background: #1a0808; border-radius: 8px; line-height: 1.7; border: 1px solid #3a1010; }
+
+  /* CARDS */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 12px; }
+  .card-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+  .card p { font-size: 13px; color: var(--muted); line-height: 1.8; }
+
+  /* METRICS */
+  .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1.25rem; }
+  .metric { background: var(--surface2); border-radius: 8px; padding: 1rem; text-align: center; }
+  .metric .val { font-size: 24px; font-weight: 700; color: var(--accent); }
+  .metric .lbl { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+  /* AUTO GRID */
+  .auto-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1.25rem; }
+  .auto-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.1rem; }
+  .auto-card h4 { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .auto-card p { font-size: 12px; color: var(--muted); line-height: 1.6; }
+  .prog { height: 3px; background: var(--border); border-radius: 2px; margin: 8px 0 4px; }
+  .prog-fill { height: 100%; border-radius: 2px; background: var(--accent2); }
+  .prog-label { font-size: 11px; color: var(--muted); }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 1.25rem 0; }
+
+  .tip-box { background: #0d1f0d; border: 1px solid #1a3d1a; border-radius: 8px; padding: .8rem 1rem; font-size: 12px; color: #86efac; line-height: 1.6; margin-bottom: 1rem; }
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="logo">🎬 <span>Studio</span>Viral</div>
+    <button class="nav-item active" onclick="showPanel('setup', this)"><span class="icon">⚙️</span> Configurar Ollama</button>
+    <button class="nav-item" onclick="showPanel('nicho', this)"><span class="icon">🎯</span> Descobrir Nicho</button>
+    <button class="nav-item" onclick="showPanel('tendencias', this)"><span class="icon">📈</span> Tendências</button>
+    <button class="nav-item" onclick="showPanel('roteiro', this)"><span class="icon">📝</span> Roteiro</button>
+    <button class="nav-item" onclick="showPanel('edicao', this)"><span class="icon">✂️</span> Edição</button>
+    <button class="nav-item" onclick="showPanel('monetizacao', this)"><span class="icon">💰</span> Monetização</button>
+    <button class="nav-item" onclick="showPanel('autonomo', this)"><span class="icon">🤖</span> Modo Autônomo</button>
+    <div class="sidebar-footer">
+      Studio Viral v1.0<br>
+      100% local • Gratuito forever<br>
+      Powered by Ollama
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- STATUS BAR (sempre visível) -->
+    <div class="status-bar" id="status-bar">
+      <div class="status-dot" id="status-dot"></div>
+      <div class="status-text" id="status-text">
+        Verificando Ollama...<br>
+        <small>Clique em "Verificar" se demorar</small>
+      </div>
+      <button class="btn-check" onclick="verificarOllama()">🔄 Verificar</button>
+    </div>
+
+    <!-- MODEL BAR -->
+    <div class="model-bar">
+      <label>Modelo:</label>
+      <select id="model-select">
+        <option value="llama3.2">llama3.2 (recomendado — rápido e leve)</option>
+        <option value="llama3.1">llama3.1 (mais inteligente — 8B)</option>
+        <option value="mistral">mistral (ótimo para texto)</option>
+        <option value="gemma2">gemma2 (Google — excelente PT-BR)</option>
+        <option value="qwen2.5">qwen2.5 (muito bom, multilingual)</option>
+        <option value="phi3">phi3 (leve, para PCs fracos)</option>
+      </select>
+      <input type="text" id="model-custom" placeholder="ou digite outro modelo..." style="max-width:200px" />
+    </div>
+
+    <!-- ===== SETUP ===== -->
+    <div class="panel active" id="panel-setup">
+      <div class="panel-title">⚙️ Configurar Ollama</div>
+      <div class="panel-sub">Siga os 3 passos abaixo. Precisa fazer isso só uma vez. Depois o Studio funciona 100% offline, de graça, para sempre.</div>
+
+      <div class="setup-steps">
+
+        <div class="setup-step">
+          <div class="setup-step-header">
+            <div class="step-num">1</div>
+            <div class="step-title">Baixar e instalar o Ollama</div>
+          </div>
+          <p>Acesse o site oficial e baixe para Windows, Mac ou Linux:</p>
+          <div class="code-block">
+            <span>🌐 ollama.com/download</span>
+            <button class="copy-code" onclick="window.open('https://ollama.com/download','_blank')">Abrir site ↗</button>
+          </div>
+          <p>Instale normalmente como qualquer programa. O Ollama vai rodar em segundo plano automaticamente.</p>
+        </div>
+
+        <div class="setup-step">
+          <div class="setup-step-header">
+            <div class="step-num">2</div>
+            <div class="step-title">Baixar um modelo de IA</div>
+          </div>
+          <p>Abra o <strong>Prompt de Comando</strong> (Windows) ou <strong>Terminal</strong> (Mac/Linux) e rode um dos comandos abaixo:</p>
+
+          <div class="code-block">
+            <span>ollama pull llama3.2</span>
+            <button class="copy-code" onclick="copyText('ollama pull llama3.2', this)">📋 Copiar</button>
+          </div>
+          <p style="margin-bottom:8px">Escolha o modelo conforme seu PC:</p>
+          <div class="model-chips">
+            <span class="chip rec" onclick="setModel('llama3.2')">⭐ llama3.2 <span class="chip-size">2GB • recomendado</span></span>
+            <span class="chip" onclick="setModel('llama3.1')">llama3.1 <span class="chip-size">4.7GB • mais inteligente</span></span>
+            <span class="chip" onclick="setModel('mistral')">mistral <span class="chip-size">4.1GB • ótimo texto</span></span>
+            <span class="chip" onclick="setModel('gemma2')">gemma2 <span class="chip-size">5.5GB • bom PT-BR</span></span>
+            <span class="chip" onclick="setModel('qwen2.5')">qwen2.5 <span class="chip-size">4.7GB • multilingual</span></span>
+            <span class="chip" onclick="setModel('phi3')">phi3 <span class="chip-size">2.2GB • PC fraco</span></span>
+          </div>
+        </div>
+
+        <div class="setup-step">
+          <div class="setup-step-header">
+            <div class="step-num">3</div>
+            <div class="step-title">Liberar acesso do navegador ao Ollama</div>
+          </div>
+          <p>Por padrão o Ollama só aceita conexões locais. Para o Studio funcionar no navegador, rode este comando <strong>uma única vez</strong>:</p>
+          <div class="code-block">
+            <span id="cors-cmd">OLLAMA_ORIGINS=* ollama serve</span>
+            <button class="copy-code" onclick="copyText('OLLAMA_ORIGINS=* ollama serve', this)">📋 Copiar</button>
+          </div>
+          <p><strong>Windows:</strong> No PowerShell, use:</p>
+          <div class="code-block">
+            <span>$env:OLLAMA_ORIGINS="*"; ollama serve</span>
+            <button class="copy-code" onclick="copyText('$env:OLLAMA_ORIGINS=&quot;*&quot;; ollama serve', this)">📋 Copiar</button>
+          </div>
+          <p style="margin-top:8px">Deixe o terminal aberto enquanto usa o Studio. Após configurar uma vez, pode criar um atalho para isso.</p>
+        </div>
+
+        <div class="setup-step" style="border-color: var(--accent)">
+          <div class="setup-step-header">
+            <div class="step-num" style="background:var(--accent2)">✓</div>
+            <div class="step-title">Testar a conexão</div>
+          </div>
+          <p>Com o Ollama rodando, clique para verificar se está tudo certo:</p>
+          <button class="btn btn-primary" style="margin-top:10px;margin-bottom:0" onclick="verificarOllama()">
+            🔌 Testar conexão com Ollama
+          </button>
+          <div id="test-result" style="margin-top:8px"></div>
+        </div>
+
+      </div>
+
+      <div class="tip-box">
+        💡 <strong>Dica:</strong> O primeiro download do modelo pode demorar alguns minutos dependendo da sua internet. Depois disso, tudo roda instantaneamente e offline — sem limite de uso, sem custo, sem chave de API.
+      </div>
+    </div>
+
+    <!-- ===== NICHO ===== -->
+    <div class="panel" id="panel-nicho">
+      <div class="panel-title">🎯 Descobrir seu nicho ideal</div>
+      <div class="panel-sub">Responda as perguntas abaixo. A IA local analisa seu perfil e recomenda os 3 nichos com maior potencial para você.</div>
+      <div class="row">
+        <div class="field">
+          <label>Tempo disponível por dia</label>
+          <select id="n-tempo">
+            <option>30 minutos</option><option>1 hora</option>
+            <option>2-3 horas</option><option>Tempo integral</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Quer aparecer nos vídeos?</label>
+          <select id="n-aparecer">
+            <option>Não (faceless / sem aparecer)</option>
+            <option>Sim, às vezes</option><option>Sim, sempre</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Orçamento inicial</label>
+          <select id="n-budget">
+            <option>Zero — só celular</option><option>Até R$ 300</option>
+            <option>Até R$ 1.000</option><option>Acima de R$ 1.000</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Objetivo principal</label>
+          <select id="n-objetivo">
+            <option>Renda passiva</option><option>Marca pessoal</option>
+            <option>Vender produto ou serviço</option><option>Só views e fama</option>
+          </select>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:1rem">
+        <label>O que você gosta ou sabe fazer?</label>
+        <textarea id="n-interesses" placeholder="Ex: cozinhar, games, finanças, humor, tecnologia, animais, esportes, motivação..."></textarea>
+      </div>
+      <button class="btn btn-primary" id="btn-nicho" onclick="analisarNicho()">✨ Analisar meu perfil e recomendar nichos</button>
+      <div id="res-nicho"></div>
+    </div>
+
+    <!-- ===== TENDÊNCIAS ===== -->
+    <div class="panel" id="panel-tendencias">
+      <div class="panel-title">📈 Radar de Tendências</div>
+      <div class="panel-sub">A IA analisa os formatos que mais viralizam no nicho escolhido e explica como replicar cada um.</div>
+      <div class="row">
+        <div class="field">
+          <label>Nicho</label>
+          <select id="t-nicho">
+            <option>Finanças e dinheiro</option><option>Entretenimento e humor</option>
+            <option>Tecnologia e IA</option><option>Saúde e bem-estar</option>
+            <option>Educação e curiosidades</option><option>Games</option>
+            <option>Lifestyle e vlogs</option><option>Culinária</option>
+            <option>Motivação e desenvolvimento pessoal</option><option>Animais e pets</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Plataforma foco</label>
+          <select id="t-plat">
+            <option>YouTube Shorts</option><option>TikTok</option>
+            <option>Instagram Reels</option><option>YouTube (vídeos longos)</option>
+            <option>Todas as plataformas</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="btn-tend" onclick="buscarTendencias()">🔍 Analisar formatos e tendências virais</button>
+      <div id="res-tend"></div>
+    </div>
+
+    <!-- ===== ROTEIRO ===== -->
+    <div class="panel" id="panel-roteiro">
+      <div class="panel-title">📝 Gerador de Roteiros Virais</div>
+      <div class="panel-sub">Descreva o tema. A IA cria um roteiro completo com gancho, desenvolvimento e CTA otimizado para o algoritmo.</div>
+      <div class="row">
+        <div class="field">
+          <label>Plataforma</label>
+          <select id="r-plat">
+            <option>YouTube Shorts (até 60s)</option><option>TikTok (30-90s)</option>
+            <option>Instagram Reels (até 90s)</option><option>YouTube longo (8-15 min)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Tom do vídeo</label>
+          <select id="r-tom">
+            <option>Informativo e direto</option><option>Engraçado e descontraído</option>
+            <option>Chocante / clickbait</option><option>Motivacional</option>
+            <option>Storytelling / narrativa</option>
+          </select>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:1rem">
+        <label>Tema ou ideia do vídeo</label>
+        <textarea id="r-tema" placeholder="Ex: '5 formas de ganhar dinheiro com IA em 2025' ou cole uma tendência do radar..."></textarea>
+      </div>
+      <button class="btn btn-primary" id="btn-rot" onclick="gerarRoteiro()">✍️ Gerar roteiro completo</button>
+      <div id="res-rot"></div>
+    </div>
+
+    <!-- ===== EDIÇÃO ===== -->
+    <div class="panel" id="panel-edicao">
+      <div class="panel-title">✂️ Workflow de Edição Personalizado</div>
+      <div class="panel-sub">Informe seu nível e equipamento. A IA monta o processo de edição ideal com as ferramentas certas para cada etapa.</div>
+      <div class="row">
+        <div class="field">
+          <label>Nível de edição atual</label>
+          <select id="e-nivel">
+            <option>Zero — nunca editei nada</option><option>Iniciante — básico</option>
+            <option>Intermediário</option><option>Avançado</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Dispositivo principal</label>
+          <select id="e-device">
+            <option>Celular Android</option><option>Celular iPhone</option>
+            <option>PC Windows</option><option>Mac</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Formato dos vídeos</label>
+          <select id="e-formato">
+            <option>Curtos verticais (Shorts/Reels/TikTok)</option>
+            <option>YouTube longo (horizontal)</option><option>Ambos</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Orçamento para ferramentas</label>
+          <select id="e-budget">
+            <option>Zero — só gratuitas</option><option>Até R$ 50/mês</option>
+            <option>Até R$ 150/mês</option><option>Livre</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="btn-ed" onclick="gerarWorkflowEdicao()">🛠️ Montar meu workflow de edição</button>
+      <div id="res-ed"></div>
+    </div>
+
+    <!-- ===== MONETIZAÇÃO ===== -->
+    <div class="panel" id="panel-monetizacao">
+      <div class="panel-title">💰 Estratégia de Monetização</div>
+      <div class="panel-sub">A IA mapeia todas as fontes de receita disponíveis para o seu estágio atual e projeta ganhos reais em R$.</div>
+      <div class="row">
+        <div class="field">
+          <label>Plataforma principal</label>
+          <select id="m-plat">
+            <option>YouTube</option><option>TikTok</option>
+            <option>Instagram</option><option>Múltiplas plataformas</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Seguidores / inscritos atuais</label>
+          <select id="m-seg">
+            <option>Ainda não comecei</option><option>1 a 500</option>
+            <option>500 a 5.000</option><option>5.000 a 50.000</option>
+            <option>Acima de 50.000</option>
+          </select>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:1rem">
+        <label>Nicho do canal</label>
+        <input type="text" id="m-nicho" placeholder="Ex: finanças pessoais, humor, tecnologia, culinária...">
+      </div>
+      <button class="btn btn-primary" id="btn-mon" onclick="gerarMonetizacao()">💸 Mapear minhas fontes de receita</button>
+      <div id="res-mon"></div>
+    </div>
+
+    <!-- ===== AUTÔNOMO ===== -->
+    <div class="panel" id="panel-autonomo">
+      <div class="panel-title">🤖 Modo Autônomo</div>
+      <div class="panel-sub">O mapa completo do sistema que trabalha por você 7 dias por semana, sem você precisar estar presente.</div>
+
+      <div class="metrics">
+        <div class="metric"><div class="val">~2h</div><div class="lbl">Trabalho manual/semana</div></div>
+        <div class="metric"><div class="val">7/7</div><div class="lbl">Dias publicando sozinho</div></div>
+        <div class="metric"><div class="val">R$0</div><div class="lbl">Custo mensal total</div></div>
+      </div>
+
+      <div class="auto-grid">
+        <div class="auto-card">
+          <h4>🔍 Monitoramento automático</h4>
+          <p>Google Trends + YouTube Data API + Apify rodam diariamente e alertam sobre tendências emergentes via n8n.</p>
+          <div class="prog"><div class="prog-fill" style="width:85%"></div></div>
+          <div class="prog-label">Automação: alta</div>
+        </div>
+        <div class="auto-card">
+          <h4>✍️ Roteiros automáticos</h4>
+          <p>Ollama local gera roteiros automaticamente para cada tendência detectada, sem custo por chamada.</p>
+          <div class="prog"><div class="prog-fill" style="width:95%"></div></div>
+          <div class="prog-label">Automação: muito alta</div>
+        </div>
+        <div class="auto-card">
+          <h4>🎙️ Narração com IA</h4>
+          <p>ElevenLabs (free) ou Kokoro TTS (local, grátis) converte roteiro em voz natural em português.</p>
+          <div class="prog"><div class="prog-fill" style="width:90%"></div></div>
+          <div class="prog-label">Automação: muito alta</div>
+        </div>
+        <div class="auto-card">
+          <h4>🎬 Edição automática</h4>
+          <p>CapCut templates + FFmpeg automatizam cortes, legendas e trilha. Ou InVideo AI para resultado premium.</p>
+          <div class="prog"><div class="prog-fill" style="width:75%"></div></div>
+          <div class="prog-label">Automação: alta</div>
+        </div>
+        <div class="auto-card">
+          <h4>📤 Publicação agendada</h4>
+          <p>Buffer (free) ou n8n publicam nos horários de pico de cada plataforma automaticamente.</p>
+          <div class="prog"><div class="prog-fill" style="width:99%"></div></div>
+          <div class="prog-label">Automação: total</div>
+        </div>
+        <div class="auto-card">
+          <h4>📊 Análise e ajuste</h4>
+          <p>n8n + Ollama local analisam métricas semanalmente e sugerem ajustes no estilo dos próximos vídeos.</p>
+          <div class="prog"><div class="prog-fill" style="width:70%"></div></div>
+          <div class="prog-label">Automação: média-alta</div>
+        </div>
+      </div>
+
+      <hr>
+
+      <div class="card">
+        <div class="card-title">🛠️ Stack 100% gratuita para rodar tudo</div>
+        <p style="line-height:2.2">
+          <strong>IA local:</strong> Ollama + llama3.2 (este Studio) — grátis para sempre<br>
+          <strong>Narração local:</strong> Kokoro TTS (português BR, grátis) ou ElevenLabs free<br>
+          <strong>Edição:</strong> CapCut PC (grátis) ou DaVinci Resolve (grátis)<br>
+          <strong>Imagens/Stock:</strong> Pexels, Pixabay, Canva free<br>
+          <strong>Automação:</strong> n8n self-hosted (grátis) ou Make.com free tier<br>
+          <strong>Agendamento:</strong> Buffer (3 canais grátis) ou Meta Business Suite<br>
+          <strong>Monitoramento:</strong> Google Trends + TubeBuddy free + VidIQ free
+        </p>
+      </div>
+
+      <button class="btn btn-primary" id="btn-auto" onclick="gerarPlanoAutonomo()">🗺️ Gerar meu plano de implementação semana a semana</button>
+      <div id="res-auto"></div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+const OLLAMA_URL = 'http://localhost:11434';
+let ollamaOnline = false;
+
+function getModel() {
+  const custom = document.getElementById('model-custom').value.trim();
+  return custom || document.getElementById('model-select').value;
+}
+
+function setModel(m) {
+  document.getElementById('model-select').value = m;
+  document.getElementById('model-custom').value = '';
+}
+
+function copyText(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copiado!';
+    setTimeout(() => btn.textContent = orig, 2000);
+  });
+}
+
+async function verificarOllama() {
+  const dot = document.getElementById('status-dot');
+  const txt = document.getElementById('status-text');
+  const testRes = document.getElementById('test-result');
+
+  dot.className = 'status-dot';
+  txt.innerHTML = 'Verificando Ollama...<br><small>Aguarde...</small>';
+
+  try {
+    const res = await fetch(`${OLLAMA_URL}/api/tags`, { signal: AbortSignal.timeout(4000) });
+    const data = await res.json();
+    const models = data.models?.map(m => m.name) || [];
+
+    ollamaOnline = true;
+    dot.className = 'status-dot online';
+
+    if (models.length > 0) {
+      txt.innerHTML = `✅ Ollama conectado!<br><small>Modelos disponíveis: ${models.join(', ')}</small>`;
+      if (testRes) testRes.innerHTML = `<div style="color:var(--green);font-size:13px;padding:.5rem 0">✅ Tudo certo! Vá para a aba <strong>Descobrir Nicho</strong> e comece.</div>`;
+    } else {
+      txt.innerHTML = `⚠️ Ollama conectado, mas sem modelos.<br><small>Execute: ollama pull llama3.2</small>`;
+      if (testRes) testRes.innerHTML = `<div style="color:var(--warn);font-size:13px;padding:.5rem 0">⚠️ Ollama está rodando mas não tem nenhum modelo baixado. Abra o terminal e rode: <code style="background:#1a1a1a;padding:2px 6px;border-radius:4px">ollama pull llama3.2</code></div>`;
+    }
+  } catch (e) {
+    ollamaOnline = false;
+    dot.className = 'status-dot offline';
+    txt.innerHTML = `❌ Ollama não encontrado<br><small>Siga o passo 3 da configuração</small>`;
+    if (testRes) testRes.innerHTML = `<div class="error-msg">❌ Não foi possível conectar ao Ollama em localhost:11434<br><br>Verifique:<br>• O Ollama está instalado e rodando?<br>• Você executou o comando com OLLAMA_ORIGINS=* ?<br>• O terminal com "ollama serve" está aberto?</div>`;
+  }
+}
+
+function showPanel(id, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+
+function loading(elId) {
+  document.getElementById(elId).innerHTML = `
+    <div class="loading">
+      <div class="spinner"></div>
+      Processando com ${getModel()} localmente... pode levar 20-60 segundos dependendo do seu PC
+    </div>`;
+}
+
+function showResult(elId, text) {
+  document.getElementById(elId).innerHTML = `
+    <div class="result-wrap">
+      <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('${elId}-text').innerText).then(()=>this.textContent='✓ Copiado!')">📋 Copiar</button>
+      <div class="result-area" id="${elId}-text">${text.trim()}</div>
+    </div>`;
+}
+
+async function callOllama(prompt, elId, btnId) {
+  loading(elId);
+  document.getElementById(btnId).disabled = true;
+
+  try {
+    const response = await fetch(`${OLLAMA_URL}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: getModel(),
+        prompt: prompt,
+        stream: false,
+        options: { temperature: 0.8, num_predict: 2000 }
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(err);
+    }
+
+    const data = await response.json();
+    showResult(elId, data.response || 'Sem resposta. Tente novamente.');
+  } catch (e) {
+    document.getElementById(elId).innerHTML = `
+      <div class="error-msg">
+        ❌ Erro ao conectar com Ollama: ${e.message}<br><br>
+        Verifique:<br>
+        • O Ollama está rodando? (ollama serve)<br>
+        • Usou OLLAMA_ORIGINS=* ao iniciar?<br>
+        • O modelo <strong>${getModel()}</strong> está baixado? (ollama pull ${getModel()})
+      </div>`;
+  }
+
+  document.getElementById(btnId).disabled = false;
+}
+
+function analisarNicho() {
+  const tempo = document.getElementById('n-tempo').value;
+  const aparecer = document.getElementById('n-aparecer').value;
+  const budget = document.getElementById('n-budget').value;
+  const objetivo = document.getElementById('n-objetivo').value;
+  const interesses = document.getElementById('n-interesses').value || 'não especificado';
+  callOllama(`Você é especialista em criação de conteúdo digital e monetização de vídeos no Brasil. Responda sempre em português do Brasil.
+
+Analise o perfil abaixo e recomende os 3 melhores nichos para criar vídeos virais e ganhar dinheiro:
+
+PERFIL:
+- Tempo disponível por dia: ${tempo}
+- Quer aparecer nos vídeos: ${aparecer}
+- Orçamento inicial: ${budget}
+- Objetivo: ${objetivo}
+- Interesses e habilidades: ${interesses}
+
+Para cada nicho recomendado, detalhe:
+1. Por que é ideal para este perfil específico
+2. Potencial de monetização real em R$/mês
+3. Dificuldade de entrada de 1 a 10
+4. Tipos de vídeos a criar com exemplos de títulos
+5. Tempo realista para ver os primeiros resultados
+6. Canais brasileiros de referência para estudar
+
+Seja honesto e prático.`, 'res-nicho', 'btn-nicho');
+}
+
+function buscarTendencias() {
+  const nicho = document.getElementById('t-nicho').value;
+  const plat = document.getElementById('t-plat').value;
+  callOllama(`Você é especialista em marketing de conteúdo digital e algoritmos de redes sociais. Responda em português do Brasil.
+
+Liste os 5 formatos e tipos de conteúdo que mais geram views e engajamento em ${nicho} no ${plat}, especialmente no Brasil.
+
+Para cada formato explique:
+- Nome e descrição do formato
+- Por que funciona (algoritmo e psicologia)
+- Duração e estrutura ideal
+- Hashtags relevantes para usar
+- Exemplos de títulos que geram cliques
+- Potencial de monetização de 1 a 5 estrelas
+- Dificuldade: fácil, médio ou difícil
+
+Ao final, indique qual dos 5 recomenda como primeiro para quem está começando e por quê.`, 'res-tend', 'btn-tend');
+}
+
+function gerarRoteiro() {
+  const plat = document.getElementById('r-plat').value;
+  const tom = document.getElementById('r-tom').value;
+  const tema = document.getElementById('r-tema').value || 'tema viral relevante para o público brasileiro';
+  callOllama(`Você é roteirista especialista em vídeos virais para redes sociais brasileiras. Responda em português do Brasil.
+
+Crie um roteiro viral completo e pronto para gravar sobre: "${tema}"
+Plataforma: ${plat}
+Tom: ${tom}
+
+Estruture exatamente assim:
+
+🎣 GANCHO (primeiros 3 segundos)
+[frase que prende imediatamente]
+
+🎯 PROMESSA
+[o que o espectador ganha assistindo até o fim]
+
+📖 DESENVOLVIMENTO
+[conteúdo principal em blocos curtos, linguagem natural]
+
+⚡ VIRADA / SURPRESA
+[algo inesperado que mantém até o fim]
+
+📢 CTA
+[ação específica para o espectador]
+
+🎬 DICAS DE EDIÇÃO
+[cortes, textos na tela, trilha, transições]
+
+📌 TÍTULO otimizado
+📌 DESCRIÇÃO para SEO
+📌 HASHTAGS recomendadas`, 'res-rot', 'btn-rot');
+}
+
+function gerarWorkflowEdicao() {
+  const nivel = document.getElementById('e-nivel').value;
+  const device = document.getElementById('e-device').value;
+  const formato = document.getElementById('e-formato').value;
+  const budget = document.getElementById('e-budget').value;
+  callOllama(`Você é especialista em produção de vídeo e ferramentas de edição. Responda em português do Brasil.
+
+Monte um workflow de edição personalizado para:
+- Nível: ${nivel}
+- Dispositivo: ${device}
+- Formato: ${formato}
+- Orçamento: ${budget}
+
+Inclua:
+1. Ferramentas específicas (nome exato + onde baixar + gratuito ou pago)
+2. Passo a passo do processo de edição
+3. Atalhos e truques para editar mais rápido
+4. Técnicas que aumentam retenção: cortes, ritmo, legendas, zoom
+5. Onde encontrar músicas e imagens gratuitas
+6. Como usar IA para acelerar a produção
+7. Para canal faceless: como gerar vídeos e imagens sem aparecer`, 'res-ed', 'btn-ed');
+}
+
+function gerarMonetizacao() {
+  const plat = document.getElementById('m-plat').value;
+  const seg = document.getElementById('m-seg').value;
+  const nicho = document.getElementById('m-nicho').value || 'geral';
+  callOllama(`Você é especialista em monetização de conteúdo digital no Brasil. Responda em português do Brasil.
+
+Crie uma estratégia completa de monetização para:
+- Plataforma: ${plat}
+- Seguidores/inscritos: ${seg}
+- Nicho: ${nicho}
+
+Mapeie todas as fontes de receita disponíveis com:
+1. Quais fontes estão disponíveis agora com este tamanho
+2. Estimativa de ganhos em R$/mês por fonte (seja realista)
+3. O que precisa fazer para desbloquear cada fonte
+4. Qual priorizar primeiro e por quê
+5. Cronograma de 90 dias para a primeira renda
+
+Analise: Adsense, afiliados (Hotmart, Monetizze, Amazon Brasil), patrocínios, produtos digitais, memberships, UGC para marcas.`, 'res-mon', 'btn-mon');
+}
+
+function gerarPlanoAutonomo() {
+  callOllama(`Você é especialista em automação de negócios digitais. Responda em português do Brasil.
+
+Crie um plano detalhado semana a semana para montar um sistema autônomo de criação de vídeos virais do zero, começando sem gastar nada.
+
+Cubra 8 semanas:
+- Semana 1-2: Fundação e setup
+- Semana 3-4: Primeiros vídeos e aprendizado
+- Semana 5-6: Automação básica
+- Semana 7-8: Automação avançada
+
+Para cada semana:
+- Tarefas exatas a realizar
+- Ferramentas a configurar
+- Meta de resultado
+- Tempo estimado de trabalho por dia
+
+Use: Ollama local para roteiros, ElevenLabs free para narração, CapCut para edição, Buffer free para agendamento, n8n self-hosted para automação.
+
+Ao final, mostre como escalar quando tiver renda.`, 'res-auto', 'btn-auto');
+}
+
+// Init
+verificarOllama();
+</script>
+</body>
+</html>
